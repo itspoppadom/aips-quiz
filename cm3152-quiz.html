@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CM3152 · AI Quiz</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --card: #1a1a26;
+    --border: #2a2a40;
+    --accent: #6ee7b7;
+    --accent2: #818cf8;
+    --accent3: #f472b6;
+    --warn: #fbbf24;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --correct: #6ee7b7;
+    --wrong: #f87171;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(110,231,183,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(110,231,183,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow {
+    position: fixed;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-1 { background: rgba(110,231,183,0.06); top: -200px; left: -200px; }
+  .glow-2 { background: rgba(129,140,248,0.06); bottom: -200px; right: -200px; }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 48px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .logo span { color: var(--muted); }
+
+  .score-pill {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    display: flex;
+    gap: 16px;
+  }
+  .score-pill strong { color: var(--accent); font-weight: 700; }
+
+  /* Topic filter */
+  .topics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 40px;
+  }
+  .topic-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .topic-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .topic-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0a0a0f;
+    font-weight: 700;
+  }
+
+  /* Question card */
+  .question-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px;
+    margin-bottom: 24px;
+    animation: slideIn 0.35s cubic-bezier(.22,1,.36,1);
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .q-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .topic-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+  .tag-1 { background: rgba(110,231,183,0.15); color: var(--accent); }
+  .tag-2 { background: rgba(129,140,248,0.15); color: var(--accent2); }
+  .tag-3 { background: rgba(244,114,182,0.15); color: var(--accent3); }
+  .tag-4 { background: rgba(251,191,36,0.15); color: var(--warn); }
+
+  .q-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .question-text {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--text);
+    margin-bottom: 28px;
+  }
+
+  /* Options */
+  .options { display: flex; flex-direction: column; gap: 10px; }
+
+  .option {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 20px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    width: 100%;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .option:hover:not(:disabled) {
+    border-color: var(--accent2);
+    background: rgba(129,140,248,0.07);
+    transform: translateX(4px);
+  }
+  .option:disabled { cursor: default; }
+
+  .option-letter {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    transition: all 0.2s;
+    margin-top: 1px;
+  }
+
+  .option.selected {
+    border-color: var(--accent2);
+    background: rgba(129,140,248,0.12);
+  }
+  .option.selected .option-letter {
+    background: var(--accent2);
+    color: #fff;
+    border-color: var(--accent2);
+  }
+
+  .option.correct {
+    border-color: var(--correct);
+    background: rgba(110,231,183,0.1);
+    animation: pulse-correct 0.4s ease;
+  }
+  .option.correct .option-letter {
+    background: var(--correct);
+    color: #0a0a0f;
+    border-color: var(--correct);
+  }
+
+  .option.wrong {
+    border-color: var(--wrong);
+    background: rgba(248,113,113,0.1);
+    animation: shake 0.4s ease;
+  }
+  .option.wrong .option-letter {
+    background: var(--wrong);
+    color: #fff;
+    border-color: var(--wrong);
+  }
+
+  @keyframes pulse-correct {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.02); }
+    100% { transform: scale(1); }
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25%     { transform: translateX(-6px); }
+    75%     { transform: translateX(6px); }
+  }
+
+  /* Explanation */
+  .explanation {
+    margin-top: 20px;
+    padding: 16px 20px;
+    border-radius: 10px;
+    border-left: 3px solid var(--accent);
+    background: rgba(110,231,183,0.06);
+    font-size: 14px;
+    line-height: 1.7;
+    color: #94a3b8;
+    animation: fadeIn 0.3s ease;
+  }
+  .explanation strong { color: var(--accent); display: block; margin-bottom: 6px; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; font-family: 'Space Mono', monospace; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn:hover { border-color: var(--text); color: var(--text); }
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0a0a0f;
+    font-weight: 700;
+  }
+  .btn.primary:hover { background: #a7f3d0; border-color: #a7f3d0; }
+
+  /* Progress bar */
+  .progress-bar {
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    border-radius: 999px;
+    margin-bottom: 32px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 999px;
+    transition: width 0.5s cubic-bezier(.22,1,.36,1);
+  }
+
+  /* End screen */
+  .end-screen {
+    text-align: center;
+    padding: 60px 20px;
+    animation: slideIn 0.4s ease;
+  }
+  .end-score {
+    font-size: 80px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .end-label { color: var(--muted); font-size: 14px; margin-bottom: 40px; letter-spacing: 0.05em; }
+  .end-breakdown {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-bottom: 48px;
+    flex-wrap: wrap;
+  }
+  .end-stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 28px;
+    min-width: 100px;
+  }
+  .end-stat-num { font-size: 28px; font-weight: 800; }
+  .end-stat-lbl { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; }
+  .correct-stat .end-stat-num { color: var(--correct); }
+  .wrong-stat .end-stat-num { color: var(--wrong); }
+</style>
+</head>
+<body>
+<div class="glow glow-1"></div>
+<div class="glow glow-2"></div>
+
+<div class="app">
+  <header>
+    <div class="logo">
+      CM3152<br>
+      <span>AI for Problem Solving</span>
+    </div>
+    <div class="score-pill">
+      <span>Score <strong id="score-display">0</strong></span>
+      <span>Streak <strong id="streak-display">0</strong>🔥</span>
+    </div>
+  </header>
+
+  <div class="topics" id="topic-filters">
+    <button class="topic-btn active" data-topic="all">All Topics</button>
+    <button class="topic-btn" data-topic="1">1 · Search</button>
+    <button class="topic-btn" data-topic="2">2 · Adversarial</button>
+    <button class="topic-btn" data-topic="3">3 · Local Search</button>
+    <button class="topic-btn" data-topic="4">4 · Genetic Algorithms</button>
+  </div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+
+  <div id="quiz-area"></div>
+
+  <div class="controls" id="controls">
+    <button class="btn" id="skip-btn">Skip</button>
+    <button class="btn primary" id="next-btn" style="display:none">Next Question →</button>
+  </div>
+</div>
+
+<script>
+const QUESTIONS = [
+  // ─── TOPIC 1: SEARCH ───────────────────────────────────────────────────────
+  {
+    topic: "1", tag: "Search",
+    q: "Which uninformed search algorithm is generally preferred for large state spaces with unknown depth?",
+    options: ["Breadth-First Search (BFS)", "Iterative Deepening Search (IDS)", "Depth-First Search (DFS)", "Bidirectional Search"],
+    answer: 1,
+    explanation: "IDS combines BFS completeness and optimality with DFS's space efficiency. It's optimal and complete at O(b^d) time and O(bd) space — ideal when depth is unknown."
+  },
+  {
+    topic: "1", tag: "Search",
+    q: "What is the space complexity of Breadth-First Search (BFS)?",
+    options: ["O(bm)", "O(m)", "O(b^(d+1))", "O(bd)"],
+    answer: 2,
+    explanation: "BFS stores all nodes in memory. Space complexity is O(b^(d+1)) — the main weakness of BFS. At b=10, d=12, this equates to ~10 petabytes."
+  },
+  {
+    topic: "1", tag: "Search",
+    q: "What is the key advantage of Backtracking Search over standard DFS?",
+    options: ["It is complete", "It is optimal", "Space complexity is O(m) rather than O(bm)", "It explores fewer nodes"],
+    answer: 2,
+    explanation: "Backtracking generates children on demand one at a time, so only the current path is stored — O(m) space instead of DFS's O(bm)."
+  },
+  {
+    topic: "1", tag: "Search",
+    q: "In A* search, what does g(n) represent?",
+    options: ["Heuristic estimate to goal", "Actual cost from start to node n", "Total estimated path cost", "Branching factor at node n"],
+    answer: 1,
+    explanation: "g(n) is the actual cost accumulated from the start node to node n. Combined with h(n) (heuristic estimate to goal), we get f(n) = g(n) + h(n)."
+  },
+  {
+    topic: "1", tag: "Search",
+    q: "A heuristic h is admissible if:",
+    options: ["h(n) ≥ h*(n) for all n", "h(n) ≤ h*(n) for all n", "h(n) = h*(n) for all n", "h(n) ≤ c(n,a,n') + h(n')"],
+    answer: 1,
+    explanation: "Admissibility means the heuristic never overestimates the true cost to the goal. h(n) ≤ h*(n) — it is optimistic. This guarantees A* finds the optimal solution."
+  },
+  {
+    topic: "1", tag: "Search",
+    q: "If h2(n) ≥ h1(n) for all n, we say h2 dominates h1. What does this mean in practice?",
+    options: ["h1 finds solutions faster", "A* with h2 expands fewer nodes", "h2 is not admissible", "h1 is more consistent"],
+    answer: 1,
+    explanation: "A more informed heuristic (closer to h*) causes A* to expand fewer nodes before finding the goal. h2 is better — it prunes more of the search space while still remaining admissible."
+  },
+  {
+    topic: "1", tag: "Search",
+    q: "Which of these correctly combines two admissible heuristics into one admissible heuristic?",
+    options: ["h(n) = h1(n) + h2(n)", "h(n) = h1(n) / h2(n)", "h(n) = max(h1(n), h2(n))", "h(n) = min(h1(n), h2(n))"],
+    answer: 2,
+    explanation: "h(n) = max(h1, h2) is admissible because if both h1 and h2 never exceed h*, neither does their maximum. It also dominates both individually."
+  },
+  {
+    topic: "1", tag: "Search",
+    q: "For the 8-puzzle, h2 = Manhattan distance dominates h1 = misplaced tiles because:",
+    options: ["h2 is always equal to h1", "h2 ≥ h1 for all states", "h2 is faster to compute", "h2 uses fewer memory"],
+    answer: 1,
+    explanation: "Manhattan distance is derived from a more relaxed problem (removes both adjacency and empty constraints), giving a tighter lower bound. So h2(n) ≥ h1(n) always — h2 dominates h1."
+  },
+  {
+    topic: "1", tag: "Search",
+    q: "Consistency implies admissibility. What is the consistency (monotonicity) condition?",
+    options: ["h(n) ≤ h*(n)", "h(n) ≥ h*(n)", "h(n) ≤ c(n,a,n') + h(n')", "h(n) = g(n) + h(n')"],
+    answer: 2,
+    explanation: "h(n) ≤ c(n,a,n') + h(n') is the triangle inequality — the estimated cost at n is at most the step cost to n' plus the estimate from n'. Consistency → admissibility, but not vice versa."
+  },
+  {
+    topic: "1", tag: "Search",
+    q: "Which search algorithm has time and space complexity of O(b^(d/2))?",
+    options: ["IDS", "BFS", "Bidirectional Search", "DLS"],
+    answer: 2,
+    explanation: "Bidirectional Search runs two simultaneous BFS searches meeting in the middle. The exponent is halved — exponentially more efficient than BFS's O(b^d)."
+  },
+  {
+    topic: "1", tag: "Search",
+    q: "Greedy Best-First Search uses f(n) = h(n) only. What problem does this cause?",
+    options: ["It overestimates path costs", "It ignores cost already paid, can be misled and is not optimal", "It cannot generate successors", "It uses too much memory"],
+    answer: 1,
+    explanation: "Greedy ignores g(n) — the cost already incurred. It can follow a path that looks cheap to the goal but actually has high total cost, so it is neither complete nor optimal."
+  },
+  {
+    topic: "1", tag: "Search",
+    q: "DFS is NOT complete because:",
+    options: ["It uses too much memory", "It can get stuck in infinite loops or very long paths, never finding the goal", "It has exponential time complexity", "It cannot handle uniform step costs"],
+    answer: 1,
+    explanation: "DFS follows one path as deep as possible and can loop infinitely or wander down paths that never reach the goal, especially in infinite or cyclic state spaces."
+  },
+
+  // ─── TOPIC 2: ADVERSARIAL SEARCH ──────────────────────────────────────────
+  {
+    topic: "2", tag: "Adversarial",
+    q: "In the Minimax algorithm, what does a MAX node do?",
+    options: ["Returns the minimum of children's values", "Returns the maximum of children's values", "Returns the average of children's values", "Applies an evaluation function"],
+    answer: 1,
+    explanation: "MAX nodes represent the MAX player's turn — they pick the child with the highest minimax value, trying to maximise their utility."
+  },
+  {
+    topic: "2", tag: "Adversarial",
+    q: "Alpha-Beta pruning produces a different decision than standard Minimax.",
+    options: ["True — it finds better moves by pruning bad ones", "False — it produces exactly the same decision with less computation", "True — only when moves are ordered perfectly", "False — only when the tree is shallow"],
+    answer: 1,
+    explanation: "Alpha-Beta always produces the exact same decision as full Minimax. It simply prunes branches that cannot affect the outcome, saving computation without changing the result."
+  },
+  {
+    topic: "2", tag: "Adversarial",
+    q: "What is α (alpha) in Alpha-Beta pruning?",
+    options: ["The best score MIN can guarantee so far", "The best score MAX can guarantee so far (starts at −∞)", "The depth limit for the search", "The branching factor of the game tree"],
+    answer: 1,
+    explanation: "α is MAX's floor — the best value MAX has found so far. If a MIN node's value drops to or below α, MAX will never choose that path so it can be pruned."
+  },
+  {
+    topic: "2", tag: "Adversarial",
+    q: "With perfect move ordering, Alpha-Beta reduces the effective branching factor from b to:",
+    options: ["b²", "b/2", "√b", "b^(3/4)"],
+    answer: 2,
+    explanation: "Perfect ordering gives O(b^(m/2)) time — equivalent to a branching factor of √b. This means Alpha-Beta can search twice as deep as Minimax in the same time."
+  },
+  {
+    topic: "2", tag: "Adversarial",
+    q: "An evaluation function differs from a utility function because:",
+    options: ["Utility functions are faster to compute", "Evaluation functions are heuristic estimates for non-terminal states; utility functions give exact values for terminal states only", "Utility functions can be wrong", "Evaluation functions only work for chess"],
+    answer: 1,
+    explanation: "Utility is exact and only applies to terminal (game-over) states. Evaluation is a heuristic estimate applied to non-terminal nodes when the tree is too deep to search fully — it can be wrong."
+  },
+  {
+    topic: "2", tag: "Adversarial",
+    q: "In a game with chance nodes (dice rolls), Expectiminimax computes the value of a chance node as:",
+    options: ["The maximum of all child values", "The minimum of all child values", "Σ P(ci) × Utility(ci) — the expected value", "The utility of the most likely outcome"],
+    answer: 2,
+    explanation: "Chance nodes take a probability-weighted average of all possible outcomes: Σ P(ci) × U(ci). This extends Minimax to handle stochastic games like backgammon."
+  },
+  {
+    topic: "2", tag: "Adversarial",
+    q: "Alpha-Beta pruning addresses which problem in game trees?",
+    options: ["Deep tree problem (too many levels)", "Fat tree problem (too many siblings to evaluate)", "Cyclic state problem", "Non-zero-sum game problem"],
+    answer: 1,
+    explanation: "Alpha-Beta prunes sibling branches that cannot improve the current best move. It reduces the width (branching) problem. It does NOT help with trees that are simply very deep."
+  },
+  {
+    topic: "2", tag: "Adversarial",
+    q: "In a multi-player (non-zero-sum) game, each player's utility is represented as:",
+    options: ["A single number shared between players", "A vector (v1, v2, ..., vn) where each player maximises their own component", "The negative of their opponent's utility", "A probability distribution over outcomes"],
+    answer: 1,
+    explanation: "In multi-player games, utility is a vector. At each node, the player whose turn it is picks the action that maximises their own component of the utility vector."
+  },
+  {
+    topic: "2", tag: "Adversarial",
+    q: "Minimax assumes the opponent plays:",
+    options: ["Randomly", "Suboptimally", "Perfectly (always chooses the best move for themselves)", "Using the same heuristic as MAX"],
+    answer: 2,
+    explanation: "Minimax assumes a perfect adversary — MIN always picks the move that minimises MAX's utility. This makes Minimax optimal against the best possible opponent."
+  },
+  {
+    topic: "2", tag: "Adversarial",
+    q: "When is a cutoff test applied in game search?",
+    options: ["When a terminal state is reached", "When the search hits depth d and full search is infeasible, applying an evaluation function instead", "When alpha ≥ beta", "When the branching factor exceeds 10"],
+    answer: 1,
+    explanation: "A cutoff test stops the search at a predetermined depth d and applies an evaluation function (heuristic) instead of descending to terminal states. This makes game search feasible in real time."
+  },
+
+  // ─── TOPIC 3: LOCAL SEARCH ─────────────────────────────────────────────────
+  {
+    topic: "3", tag: "Local Search",
+    q: "Which of these is the best use case for Local Search?",
+    options: ["Finding the shortest path from A to B in a maze", "Placing 8 queens on a board with no attacks (just the final config, not the steps)", "Solving Missionaries and Cannibals (path needed)", "BFS on a small graph"],
+    answer: 1,
+    explanation: "Local search is ideal when you need a goal configuration, not the path to it, and the space is huge. 8-Queens just needs a valid board — the sequence of moves doesn't matter."
+  },
+  {
+    topic: "3", tag: "Local Search",
+    q: "Hill Climbing gets stuck 86% of the time on 8-Queens. What is the main cause?",
+    options: ["The algorithm has a bug", "Local maxima — states better than all neighbours but not globally optimal", "It runs out of memory", "It cannot evaluate neighbours quickly enough"],
+    answer: 1,
+    explanation: "Steepest ascent hill climbing stops as soon as no neighbour is better. Most 8-Queens states have a local maximum nearby that isn't a solution — stuck 86% of the time, succeeds in ~4 steps otherwise."
+  },
+  {
+    topic: "3", tag: "Local Search",
+    q: "How many neighbours does a state have in 8-Queens (one queen per row)?",
+    options: ["8", "16", "56", "64"],
+    answer: 2,
+    explanation: "Each of the 8 queens can move to 7 other columns in its row → 7 × 8 = 56 neighbours. 'Local' here means changing one variable (one queen's position), NOT physical adjacency."
+  },
+  {
+    topic: "3", tag: "Local Search",
+    q: "Sideway moves in hill climbing raise 8-Queens success from 14% to 94%. What problem do they solve?",
+    options: ["Local maxima (surrounded by strictly worse states)", "Plateaux and shoulders (flat regions where moves have equal value)", "Memory limitations of the algorithm", "The algorithm's inability to evaluate diagonal attacks"],
+    answer: 1,
+    explanation: "Sideway moves allow moving to a neighbour with equal value. This lets the algorithm escape plateaux/shoulders (flat regions). They do NOT escape true local maxima, which are surrounded by strictly worse states."
+  },
+  {
+    topic: "3", tag: "Local Search",
+    q: "In Simulated Annealing, what happens to the acceptance probability of a bad move as temperature T decreases?",
+    options: ["It increases, making the algorithm more random", "It stays constant throughout", "It decreases — the algorithm becomes more like pure hill climbing", "It becomes exactly 0.5"],
+    answer: 2,
+    explanation: "P = e^(ΔE/T). As T → 0, P → 0 for any bad move (ΔE < 0). The algorithm exploits rather than explores. At high T it's nearly random; at low T it's nearly greedy."
+  },
+  {
+    topic: "3", tag: "Local Search",
+    q: "Simulated Annealing is guaranteed to find the global optimum if:",
+    options: ["The neighbourhood function is perfect", "The cooling schedule is slow enough (temperature decreases very slowly)", "Sideway moves are enabled", "The initial state is near the optimum"],
+    answer: 1,
+    explanation: "If temperature decreases slowly enough, SA finds the global optimum with probability approaching 1. In practice, the cooling schedule is a compromise between quality and speed."
+  },
+  {
+    topic: "3", tag: "Local Search",
+    q: "What is the key memory advantage of Local Search?",
+    options: ["It stores the full search tree", "It only keeps the current state in memory — constant O(1) space", "It uses a hash table of visited states", "It stores the top-k best states found"],
+    answer: 1,
+    explanation: "Local search operates on a single current state. No path, no fringe, no closed set — just the current state and its neighbours. This gives O(1) memory regardless of the state space size."
+  },
+  {
+    topic: "3", tag: "Local Search",
+    q: "First-Choice Hill Climbing is especially useful when:",
+    options: ["The state space is very small", "There are very many neighbours (generating and evaluating all is too expensive)", "You need the globally optimal solution", "The fitness landscape is smooth"],
+    answer: 1,
+    explanation: "First-Choice generates random neighbours one at a time until finding a better one. When there are thousands of neighbours, evaluating all of them is too expensive — this approach finds improvement quickly."
+  },
+  {
+    topic: "3", tag: "Local Search",
+    q: "A 'ridge' in the search landscape is problematic for hill climbing because:",
+    options: ["It has no neighbours", "It is a series of local maxima that is hard to navigate — slopes fall off sharply on the sides", "It leads to the global maximum", "It causes infinite loops"],
+    answer: 1,
+    explanation: "A ridge is a sequence of local maxima arranged such that any single variable change goes downhill. Hill climbing can traverse a ridge but only slowly and unreliably."
+  },
+  {
+    topic: "3", tag: "Local Search",
+    q: "Random-Restart hill climbing is complete because:",
+    options: ["Each restart guarantees finding the global optimum", "Given enough restarts, every region of the space will eventually be explored and the goal found", "It never gets stuck at local maxima", "It has O(1) space complexity"],
+    answer: 1,
+    explanation: "Random restarts are complete in the limit — with enough restarts, the algorithm will eventually start in the basin of attraction of the global optimum (or a solution) and converge to it."
+  },
+
+  // ─── TOPIC 4: GENETIC ALGORITHMS ──────────────────────────────────────────
+  {
+    topic: "4", tag: "Genetic Algo",
+    q: "In GA terminology, what is a 'chromosome' (individual)?",
+    options: ["A single decision variable (gene)", "A set of genes representing one potential solution", "The entire population of solutions", "The fitness evaluation function"],
+    answer: 1,
+    explanation: "An individual/chromosome is a complete potential solution — a set of genes (decision variables) that encodes one candidate answer to the problem."
+  },
+  {
+    topic: "4", tag: "Genetic Algo",
+    q: "Roulette wheel selection requires all fitness values to be:",
+    options: ["Integers", "Greater than zero", "Negative", "Between 0 and 1"],
+    answer: 1,
+    explanation: "p(x) = f(x) / Σf(y). If any f(x) is zero or negative, the probability calculation breaks down. Tournament selection is preferred when negative fitness is possible."
+  },
+  {
+    topic: "4", tag: "Genetic Algo",
+    q: "What is the key distinguishing feature of Genetic Algorithms compared to other nature-inspired optimisation methods?",
+    options: ["Mutation operator", "Crossover operator — combining genes from two parents", "Random initialisation of population", "Fitness proportionate selection"],
+    answer: 1,
+    explanation: "Crossover is what makes GAs unique. By combining genetic material from two parents, GA can jump to entirely new regions of the search space that neither parent occupied — unlike mutation which is a local change."
+  },
+  {
+    topic: "4", tag: "Genetic Algo",
+    q: "In one-point crossover with parents P1 = [1,0,0,1,1] and P2 = [0,1,1,0,0] (crossover after position 2), what is Child 1?",
+    options: ["[1,0,1,0,0]", "[0,1,0,1,1]", "[1,0,0,0,0]", "[1,0,1,1,0]"],
+    answer: 0,
+    explanation: "Child 1 = left of P1 + right of P2 = [1,0] + [1,0,0] = [1,0,1,0,0]. Child 2 = [0,1] + [1,1,1] = [0,1,1,1,1]. (Assuming crossover after index 2.)"
+  },
+  {
+    topic: "4", tag: "Genetic Algo",
+    q: "Why is mutation necessary in a GA, even when crossover exists?",
+    options: ["Mutation replaces crossover for large populations", "Crossover cannot reintroduce gene values lost from the entire population — mutation can", "Mutation prevents overfitting", "Crossover increases diversity more than mutation"],
+    answer: 1,
+    explanation: "If all individuals in the population share the same value at some gene position, crossover can never change it. Mutation provides a small chance to introduce new values, preventing genetic stagnation."
+  },
+  {
+    topic: "4", tag: "Genetic Algo",
+    q: "The 'elitism' population update strategy means:",
+    options: ["Only the fittest individual survives each generation", "The top X% of individuals are automatically retained; the rest are replaced by children", "All individuals are replaced every generation", "Only children better than their parents enter the population"],
+    answer: 1,
+    explanation: "Elitism preserves the best solutions found so far, preventing loss of high-quality individuals through crossover/mutation. The rest of the population is replaced by offspring."
+  },
+  {
+    topic: "4", tag: "Genetic Algo",
+    q: "When should you NOT use a Genetic Algorithm?",
+    options: ["When the problem is large and complex", "When a specialised algorithm exists or the problem is small and simple", "When you know nothing about the search space", "When the fitness landscape has many local optima"],
+    answer: 1,
+    explanation: "GAs are 'weak' (general) methods. If a strong specialised algorithm exists, use it. If the problem is small enough to evaluate all solutions, or the landscape is simple, hill climbing outperforms GA."
+  },
+  {
+    topic: "4", tag: "Genetic Algo",
+    q: "How does a GA tackle local optima differently from hill climbing?",
+    options: ["GA uses random restarts like hill climbing", "GA maintains population diversity and crossover explores new regions by combining solutions from different areas", "GA uses simulated annealing internally", "GA evaluates all possible states before choosing"],
+    answer: 1,
+    explanation: "Crossover can combine a local optimum from one region with one from another, potentially jumping to an entirely new area of the space. Population diversity ensures multiple regions are explored simultaneously."
+  },
+  {
+    topic: "4", tag: "Genetic Algo",
+    q: "The initial population in a GA is generated with uniform distribution. This means:",
+    options: ["All solutions are evenly spread across the search space", "Each possible solution has an equal probability of being included in the initial population", "The population is sorted by fitness", "All genes are set to the same value initially"],
+    answer: 1,
+    explanation: "Uniform distribution means each solution is equally likely to appear. This creates an unbiased starting point so the GA can learn which regions are promising. Note: uniform ≠ evenly spread spatially."
+  },
+  {
+    topic: "4", tag: "Genetic Algo",
+    q: "Tournament selection has an advantage over roulette wheel because:",
+    options: ["It always selects the fittest individual", "It works with negative fitness values and selective pressure can be tuned by changing tournament size", "It requires fewer fitness evaluations", "It produces more diverse offspring"],
+    answer: 1,
+    explanation: "Roulette wheel breaks with negative fitness (negative probabilities). Tournament selection just compares two values — negatives are fine. Increasing tournament size increases pressure to select the fitter individual."
+  }
+];
+
+// ─── State ──────────────────────────────────────────────────────────────────
+let filteredTopic = "all";
+let pool = [];
+let currentQ = null;
+let answered = false;
+let score = 0;
+let streak = 0;
+let questionCount = 0;
+let correctCount = 0;
+let wrongCount = 0;
+const SESSION_LENGTH = 15;
+
+function getPool() {
+  if (filteredTopic === "all") return [...QUESTIONS];
+  return QUESTIONS.filter(q => q.topic === filteredTopic);
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function pickQuestion() {
+  const avail = getPool();
+  return avail[Math.floor(Math.random() * avail.length)];
+}
+
+function shuffledOptions(q) {
+  const opts = q.options.map((text, i) => ({ text, originalIndex: i }));
+  shuffle(opts);
+  return opts;
+}
+
+// ─── Render ──────────────────────────────────────────────────────────────────
+const tagClasses = { "1": "tag-1", "2": "tag-2", "3": "tag-3", "4": "tag-4" };
+const letters = ["A", "B", "C", "D"];
+
+function renderQuestion() {
+  if (questionCount >= SESSION_LENGTH) { renderEnd(); return; }
+
+  currentQ = pickQuestion();
+  answered = false;
+  const opts = shuffledOptions(currentQ);
+  currentQ._shuffledOpts = opts;
+
+  const pct = (questionCount / SESSION_LENGTH) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+
+  document.getElementById('next-btn').style.display = 'none';
+  document.getElementById('skip-btn').style.display = '';
+
+  const tagClass = tagClasses[currentQ.topic] || "tag-1";
+  let optHtml = opts.map((opt, i) => `
+    <button class="option" data-idx="${i}" onclick="selectOption(${i})">
+      <span class="option-letter">${letters[i]}</span>
+      <span>${opt.text}</span>
+    </button>
+  `).join('');
+
+  document.getElementById('quiz-area').innerHTML = `
+    <div class="question-card" id="q-card">
+      <div class="q-meta">
+        <span class="topic-tag ${tagClass}">Topic ${currentQ.topic} · ${currentQ.tag}</span>
+        <span class="q-num">Q${questionCount + 1} / ${SESSION_LENGTH}</span>
+      </div>
+      <div class="question-text">${currentQ.q}</div>
+      <div class="options" id="options-list">${optHtml}</div>
+    </div>
+  `;
+}
+
+function selectOption(idx) {
+  if (answered) return;
+  answered = true;
+  questionCount++;
+
+  const opts = currentQ._shuffledOpts;
+  const chosen = opts[idx];
+  const correct = opts.findIndex(o => o.originalIndex === currentQ.answer);
+
+  const buttons = document.querySelectorAll('.option');
+  buttons.forEach(b => b.disabled = true);
+
+  const isCorrect = chosen.originalIndex === currentQ.answer;
+
+  if (isCorrect) {
+    buttons[idx].classList.add('correct');
+    score += 10;
+    streak++;
+    correctCount++;
+  } else {
+    buttons[idx].classList.add('wrong');
+    buttons[correct].classList.add('correct');
+    streak = 0;
+    wrongCount++;
+  }
+
+  // Show explanation
+  const card = document.getElementById('q-card');
+  const exp = document.createElement('div');
+  exp.className = 'explanation';
+  exp.innerHTML = `<strong>${isCorrect ? '✓ Correct' : '✗ Incorrect'}</strong>${currentQ.explanation}`;
+  card.appendChild(exp);
+
+  document.getElementById('score-display').textContent = score;
+  document.getElementById('streak-display').textContent = streak;
+
+  document.getElementById('next-btn').style.display = '';
+  document.getElementById('skip-btn').style.display = 'none';
+}
+
+function renderEnd() {
+  document.getElementById('progress-fill').style.width = '100%';
+  document.getElementById('controls').style.display = 'none';
+  const pct = Math.round((correctCount / SESSION_LENGTH) * 100);
+  document.getElementById('quiz-area').innerHTML = `
+    <div class="end-screen">
+      <div class="end-score">${pct}%</div>
+      <div class="end-label">Score — ${correctCount} of ${SESSION_LENGTH} correct</div>
+      <div class="end-breakdown">
+        <div class="end-stat correct-stat">
+          <div class="end-stat-num">${correctCount}</div>
+          <div class="end-stat-lbl">Correct</div>
+        </div>
+        <div class="end-stat wrong-stat">
+          <div class="end-stat-num">${wrongCount}</div>
+          <div class="end-stat-lbl">Wrong</div>
+        </div>
+        <div class="end-stat">
+          <div class="end-stat-num">${score}</div>
+          <div class="end-stat-lbl">Points</div>
+        </div>
+      </div>
+      <button class="btn primary" onclick="restartQuiz()" style="font-size:13px;padding:14px 32px;">
+        Play Again →
+      </button>
+    </div>
+  `;
+}
+
+function restartQuiz() {
+  score = 0; streak = 0; questionCount = 0; correctCount = 0; wrongCount = 0;
+  document.getElementById('score-display').textContent = '0';
+  document.getElementById('streak-display').textContent = '0';
+  document.getElementById('controls').style.display = '';
+  document.getElementById('progress-fill').style.width = '0%';
+  renderQuestion();
+}
+
+// ─── Controls ─────────────────────────────────────────────────────────────────
+document.getElementById('next-btn').addEventListener('click', renderQuestion);
+document.getElementById('skip-btn').addEventListener('click', () => {
+  questionCount++;
+  wrongCount++;
+  streak = 0;
+  document.getElementById('streak-display').textContent = '0';
+  renderQuestion();
+});
+
+// ─── Topic filters ────────────────────────────────────────────────────────────
+document.getElementById('topic-filters').addEventListener('click', e => {
+  const btn = e.target.closest('.topic-btn');
+  if (!btn) return;
+  filteredTopic = btn.dataset.topic;
+  document.querySelectorAll('.topic-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  restartQuiz();
+});
+
+// ─── Init ──────────────────────────────────────────────────────────────────────
+renderQuestion();
+</script>
+</body>
+</html>
